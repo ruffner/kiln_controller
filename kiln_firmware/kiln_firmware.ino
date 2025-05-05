@@ -4,6 +4,10 @@
 #include "Adafruit_MCP9601.h"
 #include "TemperatureController.h"
 
+// control zones (top four elements, bottom four elements)
+#define ZONE_TOP    0
+#define ZONE_BOTTOM 1
+
 // profile support
 #define MAX_PROFILE_STEPS 20  // adjust based on your needs and available memory
 struct ProfileStep {
@@ -61,8 +65,8 @@ struct tc_status tc1_stat; // todo: which is this measureing
 struct tc_status tc2_stat;
 struct tc_status tc3_stat;
 
-// Create a controller with tuning values (adjust as needed)
-TemperatureController tempControl;
+// Create a controller for the top and bottom zones
+TemperatureController tempControlTop,tempControlBot;
 unsigned long lastControlTime = 0;
 
 void setup() {
@@ -182,25 +186,32 @@ void loop() {
           return;
         }
 
-        initialStepTemp = readKilnTemperature();
+        // choose the lesser of the two temps as the starting point so the cooler zone has a chance to solo heat
+        initialStepTemp = readKilnTemperature(ZONE_TOP) > readKilnTemperature(ZONE_BOTTOM) ? readKilnTemperature(ZONE_BOTTOM) : readKilnTemperature(ZONE_TOP);
       }
     }
 
-    Serial.print("   Setpoint (deg. C) = "); Serial.println(setpoint);
+    Serial.print("   Setpoint TOP+BOT (deg. C) = "); Serial.println(setpoint);
 
     // Apply control, prrofile is still running
-    tempControl.setSetpoint(setpoint);
-    double currentTemp = readKilnTemperature();
-
-    Serial.print("   Current kiln (deg. C) = "); Serial.println(currentTemp);
+    tempControlTop.setSetpoint(setpoint);
+    tempControlBot.setSetpoint(setpoint);
     
-    double duty = tempControl.update(currentTemp);
+    double currentTempTop = readKilnTemperature(ZONE_TOP);
+    double currentTempBot = readKilnTemperature(ZONE_BOTTOM);
 
-    Serial.print("   PID output = "); Serial.println(duty);
+    Serial.print("   Current kiln TOP (deg. C) = "); Serial.println(currentTempTop);
+    Serial.print("   Current kiln BOT (deg. C) = "); Serial.println(currentTempBot);
     
-    setpoints[0] = duty;
-    setpoints[1] = duty;
-    setpoints[2] = duty;
+    double dutyTop = tempControlTop.update(currentTempTop);
+    double dutyBot = tempControlBot.update(currentTempBot);
+
+    Serial.print("   PID output TOP = "); Serial.println(dutyTop);
+    Serial.print("   PID output BOT = "); Serial.println(dutyBot);
+    
+    setpoints[0] = dutyTop;
+    setpoints[1] = (1.0) * (double)(dutyTop > 0.5 && dutyBot > 0.5);
+    setpoints[2] = dutyBot;
     handlePWM();
   }
 
@@ -265,7 +276,7 @@ void startProfile() {
     inDwellPhase = false;
     stepStartTime = millis();
     profileComplete = false;
-    initialStepTemp = readKilnTemperature();  // lock in true start temp
+    initialStepTemp = readKilnTemperature(ZONE_TOP) > readKilnTemperature(ZONE_BOTTOM) ? readKilnTemperature(ZONE_BOTTOM) : readKilnTemperature(ZONE_TOP);
     Serial.println("Profile started.");
 }
 
@@ -328,21 +339,17 @@ double average(double v1, double v2)
   return (v1 + v2) / 2.0;
 }
 
-double readKilnTemperature()
+double readKilnTemperature(int zone)
 {
-  switch( pidInputSetting ){
-    case 0:
+  switch( zone ){
+    case ZONE_TOP:
       return tc2_stat.hot;
       break;
-    case 1:
+    case ZONE_BOTTOM:
       return tc1_stat.hot;
       break;
-    case 2:
-      return average(tc1_stat.hot, tc2_stat.hot);
-      break;
     default:
-      return average(tc1_stat.hot, tc2_stat.hot);
-      break;
+      return 10000.0; // return too hot 
   }
 }
 
