@@ -5,15 +5,19 @@ This project started with the restoration and modernization of a Crusader 274S k
 ## Element repair and re-wiring
 
 Before starting on control software, the kiln needed a freshening up of its elements. The Majority of the connections from the original controls, had corroded away to the element contacts and had to be replaced. The original wiring supported 12 elements in six groups of two with each pair wired in series. The new wiring utilized 60 amp solid-state relays to control three groups of four where each group of four consisted of a series of two in parallel with each other.
+
 ![Original wiring](images/original-wiring.jpg)
 
-The original wiring was removed to reveal the following crusty mess. 
+The original wiring was removed to reveal the following.
+
 ![No wiring](images/no-wiring.jpg)
 
 Some high temp glass fiber board was sourced and milled down into a faceplate that would cover two of the prior wiring ports (each port consisted of four holes for two element to connect). Some elements were fully removed and reworked to have fresh connection points twisted. Glass fiber batting was cut to fit between the glass board and the kiln exterior.
+
 ![New faceplate](images/new-faceplat.jpg)
 
 Eventually the SSRs and heatshinks were mounted and wired up to control ~15A worth of load. The completed re-wiring is shown below.
+
 ![Installed SSRs](images/ssr-installed.jpg)
 
 ## Control software
